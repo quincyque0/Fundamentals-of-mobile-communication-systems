@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
+import sounddevice as sd
 
 filename = "meow.wav"
 Fs, y = wavfile.read(filename)
@@ -29,13 +30,13 @@ freqs_down, amp_down = compute_spectrum(y_down, Fs_down)
 def find_bandwidth(freqs, amps, threshold_ratio=0.01):
     threshold = np.max(amps) * threshold_ratio
     active_indices = np.where(amps >= threshold)[0]
-    return freqs[active_indices[-1]] if len(active_indices) > 0 else 0
+    return freqs[active_indices[-1]] 
 
 bw_orig = find_bandwidth(freqs_orig, amp_orig)
 bw_down = find_bandwidth(freqs_down, amp_down)
 
-print(f"Ширина спектра оригинального сигнала: {bw_orig:.1f} Гц (Найквист: {Fs/2:.1f} Гц)")
-print(f"Ширина спектра прореженного сигнала:   {bw_down:.1f} Гц (Найквист: {Fs_down/2:.1f} Гц)")
+print(f"Ширина спектра оригинального сигнала: {bw_orig:.1f} Гц : {Fs/2:.1f} Гц)")
+print(f"Ширина спектра прореженного сигнала:   {bw_down:.1f} Гц : {Fs_down/2:.1f} Гц)")
 
 fig, axes = plt.subplots(2, 1, figsize=(11, 7))
 
@@ -47,7 +48,7 @@ axes[0].set_xlim([0, Fs / 2])
 axes[0].grid(True, linestyle="--", alpha=0.6)
 
 axes[1].plot(freqs_down, amp_down, color='crimson', lw=0.7)
-axes[1].set_title(f"Амплитудный спектр прореженного сигнала (Fs = {Fs_down} Гц, фактор = {factor})")
+axes[1].set_title(f"Амплитудный спектр прореженного сигнала (Fs = {Fs_down} Гц= {factor})")
 axes[1].set_xlabel("Частота, Гц")
 axes[1].set_ylabel("Амплитуда")
 axes[1].set_xlim([0, Fs_down / 2])
@@ -72,17 +73,22 @@ def quantize_adc(x, bits):
 
 bit_depths = [3, 4, 5, 6]
 freqs_ref, amp_ref = compute_spectrum(x_analog, Fs_sim)
+print("Играет оригинал")
+sd.play(y, Fs)
+sd.wait()
 
+print(f"Играет прореженный сигнал (Fs = {Fs_down} Гц)")
+sd.play(y_down, Fs_down)
+sd.wait()
 plt.figure(figsize=(12, 9))
+
 
 for idx, bits in enumerate(bit_depths, 1):
     x_q_int, x_q_rec = quantize_adc(x_analog, bits)
     error = x_q_rec - x_analog
     mean_abs_error = np.mean(np.abs(error))
-    rmse = np.sqrt(np.mean(error ** 2))
     
-    print(f"Разрядность: {bits} бит (уровней: {2**bits:2d}) | "
-          f"Средняя ошибка (MAE): {mean_abs_error:.5f} | RMSE: {rmse:.5f}")
+    print(f"Разрядность: {bits} бит (уровней: {2**bits:2d}) | "f"Средняя ошибка: {mean_abs_error:.5f}")
     
     f_q, a_q = compute_spectrum(x_q_rec, Fs_sim)
     
@@ -95,6 +101,7 @@ for idx, bits in enumerate(bit_depths, 1):
     plt.xlim([0, 500])
     plt.legend(loc='upper right')
     plt.grid(True, linestyle="--", alpha=0.5)
+   
 
 plt.tight_layout()
 plt.show()
